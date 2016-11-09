@@ -1,0 +1,24 @@
+Author: Emanuel Brici
+Email: emanuel.brici@wsu.edu
+
+Description:
+This project is written in JavaScript and will triangulate a simple polygon.
+In order to fill polygons in OpenGL, they first need to be decomposed into 
+convex polygons. These compositions will normally consist of quadrilaterals 
+and/or triangles.  
+
+Example: 
+node is required to run this JavaScript program. The input is expected to be of JSON 
+format. 
+
+$node PolygonTriangulate.js < star.json > results.json
+
+After the above command is entered into the terminal, the contents of results.json can 
+be copied and pasted to https://ezekiel.encs.vancouver.wsu.edu/~cs442/projects/tri/viz/drawpoly.html
+to see the results of the polygon that has been created. 
+
+Files:
+PolygonTriangulate.js.....Algorithm that decomposes polygon.
+README....................This file.
+star.json.................Input that can be used to test program. 
+result.json...............output file

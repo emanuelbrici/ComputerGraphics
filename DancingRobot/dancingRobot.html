@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Dancing Robot</title>
+
+    <script src="matrix.js"></script>
+
+    <script id="vertex" type="x-shader">
+    attribute vec2 vertexPosition;
+    uniform mat4 ModelViewProjection;
+    void main() {
+       gl_Position = ModelViewProjection*vec4(vertexPosition, 0.0, 1.0);
+    }
+  </script>
+
+    <script id="fragment" type="x-shader">
+    precision mediump float;
+    uniform vec3 objectColor;
+    void main() {
+        gl_FragColor = vec4(objectColor, 1.0);
+    }
+  </script>
+
+    <script type="text/javascript">
+        var canvas, gl, program;
+
+        /*
+         * Load uniform variables 'ModelViewProjection' and 'objectColor'
+         * based on client variables 'gl.ModelView', 'gl.Projection' and
+         * 'gl.objectColor.'
+         *
+         *  ModelViewProjection = Projection*ModelView
+         */
+        function loadUniforms() {
+            var ModelViewProjection = gl.Projection.mult(gl.ModelView);
+            gl.uniformMatrix4fv(program.ModelViewProjection, false,
+                    ModelViewProjection.array);
+            gl.uniform3fv(program.objectColor, gl.objectColor);
+        }
+
+        /*
+         * Robot 'joint' is represented by the the unit circle which
+         * is rendered as a regular polygon with 'numVerts' sides.
+         */
+        var joint = {
+            numVerts : 20,
+            vbuffer : -1,
+            loadVBO : function() {
+                var verts = new Array(2*this.numVerts);
+                var dtheta = 2*Math.PI/this.numVerts;
+                for (var i = 0; i < this.numVerts; i++) {
+                    var theta = i*dtheta;
+                    verts[2*i] = Math.cos(theta);
+                    verts[2*i+1] = Math.sin(theta);
+                }
+                var varray = new Float32Array(verts);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, varray, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, this.numVerts);
+            }
+        };
+
+        /*
+         * Robot 'headSegment' is represented by the the unit circle which
+         * is rendered as a regular polygon with 'numVerts' sides.
+         */
+        var headSegment = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    1.5, 1,
+                    1.5, -2,
+                    -1.5, -2,
+                    -1.5, 1
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, 4);
+            }
+        };
+
+        var bodySegment = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    3,  -2,
+                    5, -4,
+                    2, -8,
+                    -2, -8,
+                    -5, -4,
+                    -3,  -2
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, 6);
+            }
+        };
+
+        /*
+         * Robot 'armSegment' is represented with a rectangle with the origin
+         * at the top for a convenient pivot point for rotations.
+         */
+        var armSegment = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    1,  0,
+                    1, -6,
+                    -1, -6,
+                    -1,  0
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, 4);
+            }
+        };
+
+        var legSegment = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    1,  0,
+                    1, -6,
+                    -1, -6,
+                    -1,  0
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, 4);
+            }
+        };
+
+        var footSegment = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    .5,  0,
+                    1, -1,
+                    -1, -1,
+                    -.5,  0
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, 4);
+            }
+        };
+
+        var nose = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    .5,  -0.75,
+                    .5, -1.5,
+                    -.5, -1.5,
+                    -.5,  -0.75
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, 4);
+            }
+        };
+
+        var lineW = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    -3,  -4,
+                    -2.70, -5,
+                     -2.3, -4,
+                      -2, -5,
+                        -1.65, -4
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_STRIP, 0, 5);
+            }
+        };
+
+        var lineS= {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    -1,  -4,
+                    -1.5, -4,
+                    -1.5, -4.5,
+                    -1, -4.5,
+                    -1, -5,
+                    -1.5, -5
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_STRIP, 0, 6);
+            }
+        };
+
+        var lineU= {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    -.75,  -4,
+                     -.75, -5,
+                      0, -5.,
+                        0, -4
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_STRIP, 0, 4);
+            }
+        };
+
+        var lineV= {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    .25,  -4,
+                    .75, -5,
+                    1.25, -4
+
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_STRIP, 0, 3);
+            }
+        };
+
+        var leftBall = {
+            draw : function() {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(-1, -2, 0);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.3, .3, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        var rightBall = {
+            draw : function() {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(1, -2, 0);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.3, .3, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        /*
+         * Robot 'leftFinger' is v-shaped claw with the origin at top
+         * for simple pivot point.
+         */
+        var leftFinger = {
+            vbuffer : -1,
+            loadVBO : function() {
+                var vertices = new Float32Array([
+                    0, 0,
+                    -0.5, -1,
+                    0, -2,
+                    -1, -1
+                ]);
+                this.vbuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            },
+            draw : function() {
+                if (this.vbuffer < 0)
+                    this.loadVBO();
+                loadUniforms();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+                gl.enableVertexAttribArray(program.vertexPosition);
+                gl.vertexAttribPointer(program.vertexPosition,
+                        2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_LOOP, 0, 3);
+            }
+        };
+
+        /*
+         * 'rightFinger' is simply the 'leftFinger' mirrored about y-axis.
+         */
+        var rightFinger = {
+            draw : function() {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(-1, 1, 1);
+                leftFinger.draw();
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        /*
+         * Robot 'claw' is a wrist joint and two fingers.
+         *   alpha : wrist rotation (in degrees),
+         *   beta : half angle of claw opening.
+         */
+        var claw = {
+            draw : function(alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+
+                gl.ModelView.rotate(alpha, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.rotate(-beta, 0, 0, 1);
+                gl.ModelView.scale(.6, .6, 1);
+                leftFinger.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.rotate(beta, 0, 0, 1);
+                gl.ModelView.scale(.6, .6, 1);
+                rightFinger.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        var foot = {
+            draw : function(alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+
+                gl.ModelView.rotate(alpha, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.rotate(beta, 0, 0, 1);
+                gl.ModelView.scale(.7, .7, 1);
+                footSegment.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        /*
+         * Robot 'foreArm' includes elbow joint, forarm, and claw.
+         *   phi : elbow rotation.
+         *   alpha : wrist rotation,
+         *   beta : claw opening.
+         */
+        var foreArm = {
+            draw : function(phi, alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+
+                gl.ModelView.rotate(phi, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                armSegment.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+
+                gl.ModelView.translate(0, -3, 0);
+                claw.draw(alpha, beta);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        var lowerLeg = {
+            draw : function(phi, alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+
+                gl.ModelView.rotate(phi, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.6, .6, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.6, .6, 1);
+                armSegment.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+
+                gl.ModelView.translate(0, -3.6, 0);
+                foot.draw(alpha, beta);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        /*
+         * Robot 'leftArm' with origin at shoulder pivot point.
+         *   theta : shoulder rotation (in degrees),
+         *   phi : elbow rotation,
+         *   alpha : wrist rotation,
+         *   beta : half angle of claw opening.
+         */
+        var leftArm = {
+            draw : function(theta, phi, alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(-5, -4, 0);
+                gl.ModelView.rotate(-theta, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                armSegment.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.ModelView.translate(0, -3, 0);
+                foreArm.draw(phi, alpha, beta);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        var rightArm = {
+            draw : function(theta, phi, alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(5, -4, 0);
+                gl.ModelView.rotate(-theta, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.5, .5, 1);
+                armSegment.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.ModelView.translate(0, -3, 0);
+                foreArm.draw(phi, alpha, beta);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        var leftLeg = {
+            draw : function(theta, phi, alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(-2, -8, 0);
+                gl.ModelView.rotate(-theta, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.6, .6, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.6, .6, 1);
+                legSegment.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.ModelView.translate(0, -3.6, 0);
+                lowerLeg.draw(phi, alpha, beta);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        var rightLeg = {
+            draw : function(theta, phi, alpha, beta) {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(2, -8, 0);
+                gl.ModelView.rotate(-theta, 0, 0, 1);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.6, .6, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.6, .6, 1);
+                legSegment.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.ModelView.translate(0, -3.6, 0);
+                lowerLeg.draw(phi, alpha, beta);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        var head = {
+            draw : function(theta) {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(0, -2, 0);
+                gl.ModelView.rotate(theta + 180, 0, 0, 1);
+                nose.draw();
+                leftBall.draw();
+                rightBall.draw();
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.scale(.6, .6, 1);
+                joint.draw();
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.translate(0, -1, 0);
+                headSegment.draw();
+
+                gl.matrixStack.pop(gl.ModelView);
+
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+        /*
+         * State of robot angles.
+         */
+        var shoulderAngle = {val : 0, min :   0, max : 90, freq : 0.25};
+        var elbowAngle =    {val : 0, min :   0, max : 90, freq : 0.2};
+        var wristAngle =    {val : 0, min : -30, max : 30, freq : 0.1};
+        var clawAngle =     {val : 0, min :   0, max : 35, freq : 0.1};
+
+        var bodyAngle =     {val : 0, min : -10, max : 10, freq : .2};
+        var headAngle =     {val : 0, min : -25, max : 25, freq : 0.2};
+
+        var hipAngle =      {val : 0, min :   -15, max : 15, freq : 0.5};
+        var kneeAngle =     {val : 0, min :   0, max : 45, freq : 0.2};
+        var ankelAngle =    {val : 0, min : -10, max : 30, freq : 0.1};
+        var footAngle =     {val : 0, min :   -25, max : 25, freq : 0.5};
+
+        var robot = {
+            draw : function() {
+                gl.matrixStack.push(gl.ModelView);
+                gl.ModelView.rotate(bodyAngle.val, 0, 0, 1);
+
+
+                bodySegment.draw();
+                lineW.draw();
+                lineS.draw();
+                lineU.draw();
+                lineV.draw();
+
+                gl.matrixStack.push(gl.ModelView);
+                head.draw(headAngle.val);
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                leftArm.draw(shoulderAngle.val, elbowAngle.val,
+                        wristAngle.val, clawAngle.val);
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                rightArm.draw(-shoulderAngle.val, -elbowAngle.val,
+                        -wristAngle.val, clawAngle.val);
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                leftLeg.draw(hipAngle.val, kneeAngle.val,
+                        ankelAngle.val, footAngle.val);
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.push(gl.ModelView);
+                rightLeg.draw(hipAngle.val, -kneeAngle.val,
+                        ankelAngle.val, footAngle.val);
+                gl.matrixStack.pop(gl.ModelView);
+
+                gl.matrixStack.pop(gl.ModelView);
+            }
+        };
+
+
+        /*
+         * Initialize Web-GL from HTML canvas element.
+         */
+        function init() {
+            canvas = document.getElementById("mycanvas");
+            canvas.addEventListener("mousedown", mousedown, false);
+            gl = canvas.getContext("experimental-webgl");
+            gl.viewport(0,0,canvas.width,canvas.height);
+            gl.clearColor(0.1,0.1,0.1,1);  // dark gray
+
+            var v = document.getElementById("vertex").firstChild.nodeValue;
+            var vs = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vs,v);
+            gl.compileShader(vs);
+            if (!gl.getShaderParameter(vs,gl.COMPILE_STATUS))
+                console.log(gl.getShaderInfoLog(vs));
+
+            var f = document.getElementById("fragment").firstChild.nodeValue;
+            var fs = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fs,f);
+            gl.compileShader(fs);
+            if (!gl.getShaderParameter(fs,gl.COMPILE_STATUS))
+                console.log(gl.getShaderInfoLog(fs));
+
+            program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+
+            program.ModelViewProjection = gl.getUniformLocation(program,
+                    "ModelViewProjection");
+            program.objectColor = gl.getUniformLocation(program, "objectColor");
+
+            program.vertexPosition = gl.getAttribLocation(program, "vertexPosition");
+
+            gl.useProgram(program);
+
+            gl.objectColor = [1, 0, 0]; // red
+            gl.lineWidth(2);
+
+            gl.ModelView = new Matrix4x4();
+            gl.Projection = new Matrix4x4();
+            gl.Projection.ortho(-16, 16, -16, 3, -1, +1);
+            gl.matrixStack = new Matrix4x4Stack();
+
+            window.requestAnimFrame = (function(){
+                return  window.requestAnimationFrame ||
+                        window.webkitRequestAnimationFrame ||
+                        window.mozRequestAnimationFrame    ||
+                        window.oRequestAnimationFrame      ||
+                        window.msRequestAnimationFrame     ||
+                        function(/* function */ callback, /* DOMElement */ element){
+                            window.setTimeout(callback, 1000 / 60);
+                        };
+            })();
+        }
+
+        /*
+         * 'getAngle' is used to compute current state of the various
+         * robot arm angles during animation at time t (in seconds).
+         *   freq : rotation frequency.
+         *   min, max : minimum and maximum rotation angles,
+         *   t : current time (in seconds).
+         */
+        function getAngle(freq, min, max, t) {
+            var s = Math.sin(freq*2*Math.PI*t);  // -1 <= s <= +1
+            return 0.5*(s + 1)*(max - min) + min;  // min <= angle <= max
+        }
+
+        /*
+         * Main Web-GL 'display' function.
+         *  (1) clear frame buffer.
+         *  (2) draw robot arm.
+         *  (3) flush all pending GL commands.
+         */
+        function display() {
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            robot.draw();
+            gl.flush();
+        }
+
+        var animating = false;  // are we currently animating?
+
+        /*
+         * Mouse down event handler toggles animation on/off.
+         * TODO : handle 'touch down' event for mobile devices.
+         */
+        function mousedown() {
+            console.log("mouseDown()");
+            animating = !animating;   // toggle animation on/off
+            if (animating)
+                requestAnimFrame(drawAnimFrame);
+        }
+
+        /*
+         * Called for each animation frame.
+         *  (1) If animating request another frame.
+         *  (2) Determine how much time (in seconds) has elapsed.
+         *  (3) Update model parameters based on elapsed time.
+         *  (4) Invoke main WebGL display function.
+         */
+        var animationStartTime;
+        function drawAnimFrame(currentTime) {
+            if (animating)
+                requestAnimFrame(drawAnimFrame);
+            if (animationStartTime === undefined)
+                animationStartTime = currentTime;
+            var elapsedTime = (currentTime - animationStartTime)/1000;;
+
+            shoulderAngle.val = getAngle(shoulderAngle.freq,
+                    shoulderAngle.min, shoulderAngle.max,
+                    elapsedTime);
+            elbowAngle.val = getAngle(elbowAngle.freq,
+                    elbowAngle.min, elbowAngle.max,
+                    elapsedTime);
+            wristAngle.val = getAngle(wristAngle.freq,
+                    wristAngle.min, wristAngle.max,
+                    elapsedTime);
+            clawAngle.val = getAngle(clawAngle.freq,
+                    clawAngle.min, clawAngle.max,
+                    elapsedTime);
+
+            bodyAngle.val = getAngle(bodyAngle.freq,
+                    bodyAngle.min, bodyAngle.max,
+                    elapsedTime);
+            headAngle.val = getAngle(headAngle.freq,
+                    headAngle.min, headAngle.max,
+                    elapsedTime);
+
+            hipAngle.val = getAngle(hipAngle.freq,
+                    hipAngle.min, hipAngle.max,
+                    elapsedTime);
+            kneeAngle.val = getAngle(kneeAngle.freq,
+                    kneeAngle.min, kneeAngle.max,
+                    elapsedTime);
+            ankelAngle.val = getAngle(ankelAngle.freq,
+                    ankelAngle.min, ankelAngle.max,
+                    elapsedTime);
+            footAngle.val = getAngle(footAngle.freq,
+                    footAngle.min, footAngle.max,
+                    elapsedTime);
+
+            display();
+        }
+    </script>
+</head>
+
+<body onload="init(); display()">
+<canvas id="mycanvas" width=640" height="380"></canvas>
+</body>
+
+</html>

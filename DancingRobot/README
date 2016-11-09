@@ -1,0 +1,15 @@
+Author: Emanuel Brici
+Email: emanuel.brici@wsu.edu
+
+Description:
+This project is written in JavaScript and HTML and will display a dancing 
+robot with WSUV written on its chest in a web browser. A very important part 
+in creating my dancing robot was to make sure that the instancing and 
+hierarchical modeling was done correctly. I was able to achieve this by
+drawing out my robot and taking note of what body parts I wanted to be 
+affected by the rotations, translations, and scales I implemented.
+
+Files:
+dancingRobot.html.........File that creates dancing robot using HTML and JavaScript
+matrix.js.................Vector and Matrix routines for client side WebGL Math.
+README....................This file.

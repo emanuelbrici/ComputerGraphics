@@ -1,0 +1,18 @@
+Author: Emanuel Brici
+Email: emanuel.brici@wsu.edu
+
+Description:
+This project is written in JavaScript and HTML and will display a circular  
+shaded tube in a web browser. I was able to come to a solution by first drawing out
+the spine and mesh of the circular tube. I used the functions that were described in
+part 2 and 3 of the documentation. The spine and mesh implementations are commented out in
+the tube.html file. After completing the spine and mesh I then worked on drawing the color
+and shade of the circular tube. To add color and shade, only the tube.html file needed
+to be modified. The vertex shader is where I added the color, shading and light components
+of the tube. 
+
+Files:
+tube.html.........File that creates circular shaded tube using HTML and JavaScript
+matrix.js.........Vector and Matrix routines for client side WebGL Math.
+tube.js...........Routines that are used to create tube shape.
+README............This file.
